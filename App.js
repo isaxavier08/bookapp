@@ -1,3 +1,5 @@
+import axios from 'axios';
+//import asyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -11,13 +13,16 @@ import {
 } from 'react-native';
 import PrincipalScreen from './Principal';
 import ReservasScreen from './Reservas';
+import CadastroScreen from './cadastro';
 
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [screen, setScreen] = useState('login');
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     const timer = setTimeout(() => setShowSplash(false), 1800);
@@ -27,19 +32,38 @@ export default function App() {
   useEffect(() => {
     if (screen !== 'loading') return;
 
-    const timer = setTimeout(() => setScreen('principal'), 1800);
+    const timer = setTimeout(() => setScreen('reservas'), 1800);
     return () => clearTimeout(timer);
   }, [screen]);
 
   const isLoginValid = email.trim() !== '' && password.trim() !== '';
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (!isLoginValid) return;
+
+    setLoginError('');
+    try {
+      await axios.post(`${API_BASE_URL}/login`, {
+        email: email.trim(),
+        password,
+      });
+    } catch (error) {
+      setLoginError(error.response?.data?.message || 'Não foi possível entrar. Verifique seus dados.');
+      return;
+    }
+
     setScreen('loading');
   };
 
   const handleCadastro = () => {
-    setScreen('loading');
+    setScreen('cadastro');
+  };
+
+  const handleCadastroConcluido = () => {
+    setEmail('');
+    setPassword('');
+    setShowPassword(false);
+    setScreen('login');
   };
 
   if (showSplash) {
@@ -86,38 +110,41 @@ export default function App() {
     );
   }
 
+  if (screen === 'cadastro') {
+    return <CadastroScreen onGoToLogin={() => setScreen('login')} onCadastroConcluido={handleCadastroConcluido} />;
+  }
+
   return (
     <View style={styles.screen}>
       <StatusBar style="dark" />
-
-      <View style={styles.phoneShell}>
-        <View style={styles.logoWrap}>
-          <Image source={require('./assets/logo.png')} style={styles.logo} />
+      <View style={styles.loginCard}>
+        <View style={styles.loginHeader}>
+          <Image source={require('./assets/logo.png')} style={styles.headerLogo} />
+          <View style={styles.headerCopy}>
+            <Text style={styles.welcomeTitle}>Bem-vindo</Text>
+            <Text style={styles.welcomeSubtitle}>Acesse o sistema de reservas</Text>
+          </View>
         </View>
 
         <View style={styles.formCard}>
-          <Text style={styles.title}>Bem-vindo(a)!</Text>
-          <Text style={styles.subtitle}>Faça login para continuar</Text>
+          <Text style={styles.fieldLabel}>Email</Text>
+          <TextInput
+            style={styles.loginInput}
+            placeholder="seu@email.com"
+            placeholderTextColor="#777"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+          />
+          <Text style={styles.helperText}>Insira suas credenciais para acessar o sistema.</Text>
 
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>✉</Text>
+          <Text style={styles.fieldLabel}>Senha</Text>
+          <View style={styles.passwordContainer}>
             <TextInput
-              style={styles.input}
-              placeholder="E-mail"
-              placeholderTextColor="#8a8a8a"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Text style={styles.inputIcon}>🔒</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Senha"
-              placeholderTextColor="#8a8a8a"
+              style={styles.passwordInput}
+              placeholder="••••••••"
+              placeholderTextColor="#777"
               value={password}
               onChangeText={setPassword}
               secureTextEntry={!showPassword}
@@ -129,6 +156,13 @@ export default function App() {
               <Text style={styles.eyeText}>{showPassword ? '◉' : '◌'}</Text>
             </Pressable>
           </View>
+
+          <TouchableOpacity style={styles.rememberRow} onPress={() => setRememberMe((prev) => !prev)}>
+            <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+              {rememberMe && <Text style={styles.checkboxMark}>✓</Text>}
+            </View>
+            <Text style={styles.rememberText}>Lembrar de mim</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.button, !isLoginValid && styles.buttonDisabled]}
@@ -145,12 +179,12 @@ export default function App() {
             </Text>
           )}
 
-          <Text style={styles.forgotText}>Esqueceu sua senha?</Text>
+          {loginError ? <Text style={styles.validationText}>{loginError}</Text> : null}
 
-          <Text style={styles.footerText}>
-            Não tem conta?{' '}
+          <View style={styles.footerRow}>
+            <Text style={styles.footerText}>Ainda não possui uma conta?</Text>
             <Text style={styles.footerLink} onPress={handleCadastro}>Cadastre-se</Text>
-          </Text>
+          </View>
         </View>
       </View>
     </View>
@@ -170,51 +204,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  logoWrap: {
-    height: 190,
-    backgroundColor: '#e1172a',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 14,
-    overflow: 'hidden',
-    position: 'relative',
-  },
   logo: {
     width: 320,
     height: 120,
+    resizeMode: 'contain',
   },
-  phoneShell: {
-    width: 370,
-    height: 760,
-    backgroundColor: '#f7f7f7',
-    borderRadius: 38,
-    paddingTop: 18,
-    paddingHorizontal: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 8,
-  },
+  loginCard: { width: '92%', maxWidth: 540, backgroundColor: '#fff', borderRadius: 20, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.14, shadowRadius: 16, shadowOffset: { width: 0, height: 8 }, elevation: 7 },
+  loginHeader: { minHeight: 125, backgroundColor: '#d71526', paddingHorizontal: 24, paddingVertical: 22, flexDirection: 'row', alignItems: 'center', borderBottomWidth: 5, borderBottomColor: '#f1f1f1' },
+  headerLogo: { width: 122, height: 48, resizeMode: 'contain' },
+  headerCopy: { flex: 1, marginLeft: 13 },
+  welcomeTitle: { color: '#fff', fontSize: 27, fontWeight: '800' },
+  welcomeSubtitle: { color: '#f9c5c8', fontSize: 15, marginTop: 4 },
   formCard: {
-    flex: 1,
-    backgroundColor: '#f5f5f5',
-    borderRadius: 28,
-    paddingTop: 22,
-    paddingHorizontal: 22,
-    alignItems: 'center',
+    backgroundColor: '#fff',
+    paddingHorizontal: 24,
+    paddingTop: 24,
+    paddingBottom: 28,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#1f1f1f',
-    marginBottom: 4,
+  fieldLabel: { color: '#262626', fontSize: 17, fontWeight: '700', marginBottom: 9, marginTop: 12 },
+  loginInput: {
+    width: '100%',
+    height: 58,
+    backgroundColor: '#fafafa',
+    borderWidth: 1,
+    borderColor: '#d8d8d8',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    fontSize: 17,
+    color: '#222',
   },
-  subtitle: {
-    fontSize: 15,
-    color: '#676767',
-    marginBottom: 22,
-  },
+  helperText: { color: '#777', fontSize: 14, marginTop: 10, marginBottom: 14 },
+  passwordContainer: { width: '100%', height: 58, backgroundColor: '#fafafa', borderWidth: 1, borderColor: '#d8d8d8', borderRadius: 12, flexDirection: 'row', alignItems: 'center', paddingLeft: 14 },
+  passwordInput: { flex: 1, height: 56, fontSize: 17, color: '#222' },
+  rememberRow: { flexDirection: 'row', alignItems: 'center', marginTop: 20, marginBottom: 26 },
+  checkbox: { width: 21, height: 21, borderWidth: 1, borderColor: '#d5dce3', borderRadius: 5, alignItems: 'center', justifyContent: 'center' },
+  checkboxChecked: { backgroundColor: '#d71526', borderColor: '#d71526' },
+  checkboxMark: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  rememberText: { color: '#666', fontSize: 16, marginLeft: 10 },
   inputContainer: {
     width: '100%',
     height: 54,
@@ -226,18 +252,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingHorizontal: 14,
     marginBottom: 18,
-  },
-  inputIcon: {
-    fontSize: 18,
-    marginRight: 10,
-    color: '#9d1c2d',
-  },
-  input: {
-    flex: 1,
-    height: 52,
-    fontSize: 15,
-    color: '#222',
-    paddingVertical: 0,
   },
   eyeButton: {
     width: 28,
@@ -256,7 +270,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 6,
+    marginTop: 0,
     shadowColor: '#d71526',
     shadowOpacity: 0.25,
     shadowRadius: 8,
@@ -272,25 +286,29 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   validationText: {
-    marginTop: 8,
+    marginTop: 10,
     color: '#b3261e',
     fontSize: 12,
     textAlign: 'center',
   },
-  forgotText: {
-    marginTop: 18,
-    fontSize: 15,
-    color: '#9d1c2d',
+  footerText: {
+    fontSize: 16,
+    color: '#e1172a',
+    fontWeight: '600',
     textAlign: 'center',
   },
-  footerText: {
-    marginTop: 26,
-    fontSize: 14,
-    color: '#555',
-    textAlign: 'center',
+  footerRow: {
+    marginTop: 24,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 5,
   },
   footerLink: {
+    fontSize: 16,
     color: '#d71526',
-    fontWeight: '700',
+    fontWeight: '600',
+    textAlign: 'center',
   },
 });
