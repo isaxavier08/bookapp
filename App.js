@@ -15,6 +15,8 @@ import PrincipalScreen from './Principal';
 import ReservasScreen from './Reservas';
 import CadastroScreen from './cadastro';
 
+const API_BASE_URL = 'http://10.0.2.2:8000';
+
 export default function App() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -87,6 +89,7 @@ export default function App() {
   if (screen === 'principal') {
     return (
       <PrincipalScreen
+        apiBaseUrl={API_BASE_URL}
         onNavigateToReservas={() => setScreen('reservas')}
         onLogout={() => {
           setEmail('');
@@ -111,7 +114,7 @@ export default function App() {
   }
 
   if (screen === 'cadastro') {
-    return <CadastroScreen onGoToLogin={() => setScreen('login')} onCadastroConcluido={handleCadastroConcluido} />;
+    return <CadastroScreen apiBaseUrl={API_BASE_URL} onGoToLogin={() => setScreen('login')} onCadastroConcluido={handleCadastroConcluido} />;
   }
 
   return (

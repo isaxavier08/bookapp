@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
 	Image,
 	KeyboardAvoidingView,
@@ -14,15 +15,40 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
-export default function CadastroScreen({ onGoToLogin, onCadastroConcluido }) {
+export default function CadastroScreen({ apiBaseUrl, onGoToLogin, onCadastroConcluido }) {
 	const [nome, setNome] = useState('');
 	const [email, setEmail] = useState('');
 	const [senha, setSenha] = useState('');
 	const [nascimento, setNascimento] = useState('');
 	const [cpf, setCpf] = useState('');
 	const [showSenha, setShowSenha] = useState(false);
+	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [registrationError, setRegistrationError] = useState('');
 
 	const isValid = nome.trim() && email.trim() && senha.trim() && nascimento.trim() && cpf.trim();
+
+	const handleSubmit = async () => {
+		if (!isValid || isSubmitting) return;
+
+		setRegistrationError('');
+		setIsSubmitting(true);
+		try {
+			await axios.post(`${apiBaseUrl}/cadastro_usuario`, {
+				nome: nome.trim(),
+				email: email.trim(),
+				senha,
+				nascimento: nascimento.trim(),
+				cpf: cpf.trim(),
+			});
+			onCadastroConcluido();
+		} catch (error) {
+			const validationErrors = error.response?.data?.errors;
+			const firstValidationError = validationErrors ? Object.values(validationErrors)[0]?.[0] : null;
+			setRegistrationError(firstValidationError || error.response?.data?.message || 'Não foi possível concluir o cadastro.');
+		} finally {
+			setIsSubmitting(false);
+		}
+	};
 
 	return (
 		<SafeAreaView style={styles.container}>
@@ -68,10 +94,12 @@ export default function CadastroScreen({ onGoToLogin, onCadastroConcluido }) {
 								</View>
 							</View>
 
-							<TouchableOpacity style={[styles.registerButton, !isValid && styles.disabledButton]} disabled={!isValid} onPress={onCadastroConcluido}>
+							<TouchableOpacity style={[styles.registerButton, (!isValid || isSubmitting) && styles.disabledButton]} disabled={!isValid || isSubmitting} onPress={handleSubmit}>
 								<Ionicons name="person-add" size={21} color="#fff" />
-								<Text style={styles.registerText}>Cadastrar usuário</Text>
+								<Text style={styles.registerText}>{isSubmitting ? 'Cadastrando...' : 'Cadastrar usuário'}</Text>
 							</TouchableOpacity>
+
+							{registrationError ? <Text style={styles.errorText}>{registrationError}</Text> : null}
 
 							<View style={styles.loginRow}>
 								<Text style={styles.loginHint}>Já tem uma conta?</Text>
@@ -124,6 +152,7 @@ const styles = StyleSheet.create({
 	registerButton: { height: 56, marginTop: 26, borderRadius: 11, backgroundColor: '#d71526', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, elevation: 4, shadowColor: '#d71526', shadowOpacity: 0.25, shadowRadius: 8, shadowOffset: { width: 0, height: 5 } },
 	disabledButton: { opacity: 0.55 },
 	registerText: { color: '#fff', fontSize: 17, fontWeight: '800' },
+	errorText: { color: '#b3261e', fontSize: 13, marginTop: 12, textAlign: 'center' },
 	loginRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 7, marginTop: 24 },
 	loginHint: { color: '#777', fontSize: 15 },
 	loginLink: { color: '#d71526', fontSize: 15, fontWeight: '800' },

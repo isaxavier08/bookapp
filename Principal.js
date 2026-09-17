@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import axios from 'axios';
 import {
   Platform,
   SafeAreaView,
@@ -16,7 +17,7 @@ const modalidades = ['Aula / Palestra', 'Estudo em grupo', 'Evento / Workshop'];
 const fundamental = ['1º A', '1º B', '2º A', '2º B', '3º A', '3º B', '4º A', '4º B', '5º A', '5º B', '6º A', '6º B', '7º A', '7º B', '8º A', '8º B', '9º A', '9º B'];
 const medio = ['1º A', '1º B', '2º A', '2º B', '3º A', '3º B'];
 
-export default function PrincipalScreen({ onNavigateToReservas, onLogout }) {
+export default function PrincipalScreen({ apiBaseUrl, onNavigateToReservas, onLogout }) {
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [data, setData] = useState('');
@@ -25,6 +26,37 @@ export default function PrincipalScreen({ onNavigateToReservas, onLogout }) {
   const [observacoes, setObservacoes] = useState('');
   const [modalidade, setModalidade] = useState(modalidades[0]);
   const [turma, setTurma] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [reservationError, setReservationError] = useState('');
+
+  const selectedTurma = turma ? turma.substring(turma.indexOf('-') + 1) : '';
+  const isReservationValid = nome.trim() && email.trim() && data.trim() && horaInicio.trim() && horaFim.trim() && selectedTurma;
+
+  const handleReservationSubmit = async () => {
+    if (!isReservationValid || isSubmitting) return;
+
+    setReservationError('');
+    setIsSubmitting(true);
+    try {
+      await axios.post(`${apiBaseUrl}/cadastro_reserva`, {
+        nome: nome.trim(),
+        email: email.trim(),
+        data: data.trim(),
+        hora_inicio: horaInicio.trim(),
+        hora_fim: horaFim.trim(),
+        modalidade,
+        turma: selectedTurma,
+        observacoes: observacoes.trim(),
+      });
+      onNavigateToReservas();
+    } catch (error) {
+      const validationErrors = error.response?.data?.errors;
+      const firstValidationError = validationErrors ? Object.values(validationErrors)[0]?.[0] : null;
+      setReservationError(firstValidationError || error.response?.data?.message || 'Não foi possível cadastrar a reserva.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -89,10 +121,15 @@ export default function PrincipalScreen({ onNavigateToReservas, onLogout }) {
 
         <FieldLabel icon="create" text="Observações" />
         <TextInput style={styles.textarea} placeholder="Equipamentos especiais, necessidade de mesa, etc." placeholderTextColor="#888" multiline textAlignVertical="top" value={observacoes} onChangeText={setObservacoes} />
-        <TouchableOpacity style={styles.confirmButton} onPress={onNavigateToReservas}>
-          <Text style={styles.confirmText}>Confirmar Reserva</Text>
+        <TouchableOpacity
+          style={[styles.confirmButton, (!isReservationValid || isSubmitting) && styles.disabledButton]}
+          disabled={!isReservationValid || isSubmitting}
+          onPress={handleReservationSubmit}
+        >
+          <Text style={styles.confirmText}>{isSubmitting ? 'Cadastrando...' : 'Confirmar Reserva'}</Text>
           <Ionicons name="checkmark-circle" size={17} color="#fff" />
         </TouchableOpacity>
+        {reservationError ? <Text style={styles.errorText}>{reservationError}</Text> : null}
       </ScrollView>
 
       <View style={styles.bottomNav}>
@@ -158,6 +195,8 @@ const styles = StyleSheet.create({
   textarea: { minHeight: 120, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e1e1e1', borderRadius: 9, padding: 13, color: '#333', fontSize: 15 },
   confirmButton: { backgroundColor: '#d71920', borderRadius: 9, minHeight: 54, marginTop: 22, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8 },
   confirmText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  disabledButton: { opacity: 0.55 },
+  errorText: { color: '#b3261e', fontSize: 13, marginTop: 10, textAlign: 'center' },
   bottomNav: { backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#e5e5e5', minHeight: 72, paddingTop: 8, paddingBottom: Platform.OS === 'ios' ? 20 : 8, flexDirection: 'row', justifyContent: 'space-around' },
   navItem: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 3 },
   navIcon: { width: 42, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center' },
