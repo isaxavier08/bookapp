@@ -1,5 +1,5 @@
 import axios from 'axios';
-//import asyncStorage from '@react-native-async-storage/async-storage';
+import {AsyncStorage} from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import {
@@ -15,7 +15,7 @@ import PrincipalScreen from './Principal';
 import ReservasScreen from './Reservas';
 import CadastroScreen from './cadastro';
 
-const API_BASE_URL = 'http://10.0.2.2:8000';
+const API_BASE_URL = 'http://10.122.41.180:8000';
 
 export default function App() {
   const [email, setEmail] = useState('');
@@ -45,10 +45,13 @@ export default function App() {
 
     setLoginError('');
     try {
-      await axios.post(`${API_BASE_URL}/login`, {
+
+        const response = await axios.get(`${API_BASE_URL}/login`, {
         email: email.trim(),
-        password,
+        senha: password.trim(),
       });
+
+      console.log("to aqui", response.data.token);
     } catch (error) {
       setLoginError(error.response?.data?.message || 'Não foi possível entrar. Verifique seus dados.');
       return;
