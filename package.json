@@ -12,7 +12,7 @@
     "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "2.2.0",
     "axios": "^1.20.0",
-    "expo": "^57.0.24",
+    "expo": "~57.0.32",
     "expo-status-bar": "~57.0.1",
     "react": "19.2.3",
     "react-native": "0.86.3",
